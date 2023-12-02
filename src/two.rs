@@ -46,6 +46,6 @@ mod test {
         let input = include_str!("./two.txt");
         let result = two(input);
 
-        assert_eq!(2286, result);
+        assert_eq!(58269, result);
     }
 }

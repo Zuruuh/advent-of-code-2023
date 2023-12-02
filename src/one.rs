@@ -63,6 +63,6 @@ mod test {
         let input = include_str!("./one.txt");
         let result = one(input);
 
-        assert_eq!(281, result);
+        assert_eq!(54578, result);
     }
 }
