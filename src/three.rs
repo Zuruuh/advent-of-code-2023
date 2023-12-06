@@ -1,4 +1,4 @@
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, HashSet};
 
 #[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Clone, Copy)]
 struct Position {
@@ -41,14 +41,14 @@ impl Position {
 
 #[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Clone, Copy)]
 enum Cell {
-    Symbol,
     Number(u32),
+    Star,
 }
 
 impl Into<u32> for Cell {
     fn into(self) -> u32 {
         match self {
-            Cell::Symbol => panic!(),
+            Cell::Star => panic!(),
             Cell::Number(num) => num,
         }
     }
@@ -56,6 +56,7 @@ impl Into<u32> for Cell {
 
 pub fn three(input: &str) -> usize {
     let mut grid = BTreeMap::<Position, Option<Cell>>::new();
+    let mut stars = Vec::<Position>::new();
 
     input
         .lines()
@@ -68,15 +69,18 @@ pub fn three(input: &str) -> usize {
                         char if char.is_ascii_digit() => {
                             Some(Cell::Number(char.to_digit(10).unwrap()))
                         }
-                        '.' => None,
-                        _ => Some(Cell::Symbol),
+                        '*' => {
+                            stars.push(Position { x, y });
+                            Some(Cell::Star)
+                        }
+                        _ => None,
                     },
                 );
             })
         })
         .for_each(drop);
 
-    let mut numbers = Vec::<(usize, Position)>::new();
+    let mut numbers = Vec::<(usize, Vec<Position>)>::new();
 
     let mut grid_iter = grid.iter().peekable();
     while grid_iter.len() != 0 {
@@ -106,31 +110,63 @@ pub fn three(input: &str) -> usize {
             }
         }
 
+        let number = current_numbers
+            .into_iter()
+            .map(|u32| u32.to_string())
+            .collect::<String>()
+            .parse::<usize>()
+            .unwrap();
+
         numbers.push((
-            current_numbers
-                .into_iter()
-                .map(|u32| u32.to_string())
-                .collect::<String>()
-                .parse::<usize>()
-                .unwrap(),
-            *pos,
+            number,
+            number
+                .to_string()
+                .chars()
+                .enumerate()
+                .map(|(i, _)| Position {
+                    x: pos.x,
+                    y: pos.y + i,
+                })
+                .collect::<Vec<_>>(),
         ));
     }
 
-    numbers
+    stars
         .iter()
-        .filter(|(number, position)| {
-            number.to_string().chars().enumerate().any(|(i, _)| {
-                Position {
-                    x: position.x,
-                    y: position.y + i,
-                }
+        .map(|position| {
+            let adjacent_numbers = position
                 .surrounding()
                 .iter()
-                .any(|pos| matches!(grid.get(pos), Some(Some(Cell::Symbol))))
-            })
+                .map(|surrounding_position| (grid.get(&surrounding_position), surrounding_position))
+                .filter_map(|(cell, surrounding_position)| {
+                    if cell.is_none() {
+                        return None;
+                    }
+
+                    let cell = cell.unwrap();
+                    if cell.is_none() {
+                        return None;
+                    }
+
+                    let cell = cell.unwrap();
+
+                    match cell {
+                        Cell::Number(_) => numbers
+                            .iter()
+                            .find(|(_, positions)| positions.contains(surrounding_position))
+                            .map(|(number, _)| number),
+                        Cell::Star => None,
+                    }
+                })
+                .map(|number| number.clone())
+                .collect::<HashSet<_>>();
+
+            if adjacent_numbers.len() == 2 {
+                return adjacent_numbers.iter().product();
+            }
+
+            0
         })
-        .map(|(number, _)| number)
         .sum()
 }
 
@@ -143,6 +179,6 @@ mod test {
         let input = include_str!("./three.txt");
         let result = three(input);
 
-        assert_eq!(4361, result);
+        assert_eq!(84584891, result);
     }
 }
