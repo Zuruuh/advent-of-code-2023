@@ -1,6 +1,8 @@
 #![allow(dead_code)]
+#![feature(iter_map_windows)]
 mod five;
 mod four;
+mod nine;
 mod one;
 mod six;
 mod utils;
