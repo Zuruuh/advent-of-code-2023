@@ -5,8 +5,20 @@ enum Card {
     Ace,
     King,
     Queen,
-    Jack,
+    Joker,
     Number(u8),
+}
+
+impl Card {
+    pub fn into_u8(&self) -> u8 {
+        match self {
+            Card::Ace => 14,
+            Card::King => 13,
+            Card::Queen => 12,
+            Card::Joker => 1,
+            Card::Number(num) => *num,
+        }
+    }
 }
 
 impl From<&char> for Card {
@@ -15,24 +27,12 @@ impl From<&char> for Card {
             'A' => Card::Ace,
             'K' => Card::King,
             'Q' => Card::Queen,
-            'J' => Card::Jack,
+            'J' => Card::Joker,
             'T' => Card::Number(10),
             number if number.is_digit(10) && number != &'0' && number != &'1' => {
                 Card::Number(number.to_digit(10).unwrap() as u8)
             }
             _ => unreachable!("{value}"),
-        }
-    }
-}
-
-impl Into<u8> for &Card {
-    fn into(self) -> u8 {
-        match self {
-            Card::Ace => 14,
-            Card::King => 13,
-            Card::Queen => 12,
-            Card::Jack => 11,
-            Card::Number(num) => *num,
         }
     }
 }
@@ -46,7 +46,7 @@ impl fmt::Display for Card {
                 Self::Ace => 'A',
                 Self::King => 'K',
                 Self::Queen => 'Q',
-                Self::Jack => 'J',
+                Self::Joker => 'J',
                 Self::Number(number) => (number == &10)
                     .then(|| 'T')
                     .unwrap_or_else(|| { number.to_string().chars().next().unwrap() }),
@@ -132,20 +132,46 @@ impl fmt::Display for Score {
 
 impl From<&Vec<Card>> for Score {
     fn from(value: &Vec<Card>) -> Self {
-        let mut map = BTreeMap::<String, usize>::new();
+        let mut map = BTreeMap::<u8, usize>::new();
 
         value.into_iter().for_each(|card| {
-            let old = map.remove(&card.to_string()).unwrap_or_default();
-            map.insert(card.to_string(), old + 1);
+            let old = map.remove(&card.into_u8()).unwrap_or_default();
+            map.insert(card.into_u8(), old + 1);
         });
 
-        let mut map = map.into_iter().map(|u| u.1).collect::<Vec<_>>();
-        map.sort();
-        let mut map = map.into_iter().rev();
-        let map = (
-            map.next().unwrap_or_default(),
-            map.next().unwrap_or_default(),
-        );
+        if let Some(jokers) = map.get(&Card::Joker.into_u8()).cloned() {
+            if jokers != 5 {
+                let mut cards = map
+                    .iter()
+                    .filter_map(|(card, count)| {
+                        (*card != Card::Joker.into_u8()).then(|| (*card, *count))
+                    })
+                    .collect::<Vec<_>>();
+
+                cards.sort_by(|a, b| a.1.cmp(&b.1));
+                map.remove(&Card::Joker.into_u8());
+
+                match cards.last() {
+                    None => {}
+                    Some(first_card) => {
+                        let best_card = map.remove_entry(&first_card.0).unwrap();
+                        map.insert(best_card.0, best_card.1 + jokers);
+                    }
+                }
+            }
+        }
+
+        let map = {
+            let mut map = map.into_iter().map(|u| u.1).collect::<Vec<_>>();
+            map.sort();
+
+            let mut map = map.into_iter().rev();
+
+            (
+                map.next().unwrap_or_default(),
+                map.next().unwrap_or_default(),
+            )
+        };
 
         match map {
             (5, 0) => Score::FiveOfAKind,
@@ -180,7 +206,7 @@ pub fn seven(input: &str) -> usize {
         Ordering::Equal => {
             let cards = a.0.cards.iter().zip(b.0.cards.iter()).collect::<Vec<_>>();
             for (a, b) in cards {
-                match <&Card as Into<u8>>::into(a).cmp(&b.into()) {
+                match a.into_u8().cmp(&b.into_u8()) {
                     Ordering::Equal => {}
                     Ordering::Less => return Ordering::Greater,
                     Ordering::Greater => return Ordering::Less,
@@ -220,6 +246,6 @@ mod test {
         let input = include_str!("./seven.txt");
         let output = seven(input);
 
-        assert_eq!(6440, output);
+        assert_eq!(5905, output);
     }
 }
