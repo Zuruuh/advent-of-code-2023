@@ -15,9 +15,8 @@ pub fn six1(input: &str) -> usize {
         .collect::<Vec<_>>()
         .into_iter();
 
-    let races = std::iter::zip(races.next().unwrap(), races.next().unwrap()).collect::<Vec<_>>();
-
-    races
+    std::iter::zip(races.next().unwrap(), races.next().unwrap())
+        .collect::<Vec<_>>()
         .into_iter()
         .map(|(time, distance)| {
             (1..time)

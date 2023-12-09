@@ -1,5 +1,5 @@
 pub fn five(input: &str) -> usize {
-    let seeds = input
+    let _seeds = input
         .lines()
         .next()
         .unwrap()
