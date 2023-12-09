@@ -26,9 +26,9 @@ pub fn nine(input: &str) -> isize {
                 .rev()
                 .reduce(|acc, numbers| match acc.last() {
                     None => vec![0],
-                    Some(last) => {
+                    Some(first) => {
                         let mut acc = acc.clone();
-                        acc.push(numbers.last().unwrap() + last);
+                        acc.push(numbers.first().unwrap() - first);
                         acc
                     }
                 })
@@ -48,6 +48,6 @@ mod test {
         let input = include_str!("./nine.txt");
         let output = nine(input);
 
-        assert_eq!(1702218515, output);
+        assert_eq!(925, output);
     }
 }
