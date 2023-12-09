@@ -199,8 +199,10 @@ pub fn seven(input: &str) -> usize {
         .enumerate()
         .map(|(i, (deck, bid))| {
             println!(
-                "Deck with cards {deck} and score {} has won place {i}",
-                deck.score
+                "Deck with cards {deck} and score {} has won place {} for a bid of {bid} ({})",
+                deck.score,
+                i + 1,
+                bid * (i + 1)
             );
 
             (i, (deck, bid))
