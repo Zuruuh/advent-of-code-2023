@@ -1,4 +1,4 @@
-use std::{collections::BTreeMap, fmt};
+use std::collections::BTreeMap;
 
 use crate::Position;
 
@@ -11,6 +11,24 @@ enum Pipe {
     BottomRight,
     TopLeft,
     TopRight,
+}
+
+impl std::fmt::Display for Pipe {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "{}",
+            match self {
+                Pipe::Start => 'S',
+                Pipe::Vertical => '|',
+                Pipe::Horizontal => '-',
+                Pipe::BottomLeft => 'L',
+                Pipe::BottomRight => 'J',
+                Pipe::TopLeft => 'F',
+                Pipe::TopRight => '7',
+            }
+        )
+    }
 }
 
 impl Pipe {
@@ -46,6 +64,7 @@ struct PipeIterator {
     starting_position: Position,
     current_position: Position,
     previous_position: Position,
+    started: bool,
 }
 
 impl PipeIterator {
@@ -62,6 +81,7 @@ impl PipeIterator {
             starting_position,
             current_position: starting_position,
             previous_position: starting_position,
+            started: false,
         }
     }
 }
@@ -73,21 +93,39 @@ impl FromIterator<(Position, Option<Pipe>)> for PipeIterator {
 }
 
 impl Iterator for PipeIterator {
-    type Item = Position;
+    type Item = (Position, Pipe);
 
     fn next(&mut self) -> Option<Self::Item> {
         if self.starting_position == self.current_position {
+            if self.started == false {
+                self.started = true;
+
+                return Some((
+                    self.starting_position,
+                    self.grid.get(&self.starting_position).unwrap().unwrap(),
+                ));
+            }
+
             self.current_position = self
                 .starting_position
                 .surrounding_without_diagonals()
                 .iter()
                 .find_map(|pos| match self.grid.get(&pos) {
                     None => None,
-                    Some(_) => Some(*pos),
+                    Some(pipe) => match pipe {
+                        None => None,
+                        Some(pipe) => pipe
+                            .surrounding(pos)
+                            .contains(&self.starting_position)
+                            .then(|| *pos),
+                    },
                 })
                 .expect("Could not find a valid pipe next to starting position");
 
-            return Some(self.current_position);
+            return Some((
+                self.current_position,
+                self.grid.get(&self.current_position).unwrap().unwrap(),
+            ));
         }
 
         let current_pipe = self
@@ -106,7 +144,10 @@ impl Iterator for PipeIterator {
                 self.previous_position = self.current_position;
                 self.current_position = next_position;
 
-                Some(next_position)
+                Some((
+                    next_position,
+                    self.grid.get(&next_position).unwrap().unwrap(),
+                ))
             }
             None => None,
         }
@@ -114,7 +155,7 @@ impl Iterator for PipeIterator {
 }
 
 pub fn ten(input: &str) -> usize {
-    (input
+    let grid = input
         .lines()
         .enumerate()
         .flat_map(|(x, line)| {
@@ -123,11 +164,41 @@ pub fn ten(input: &str) -> usize {
                 .map(|(y, char)| (Position { x, y }, Pipe::from_char(char)))
                 .collect::<Vec<_>>()
         })
-        .collect::<PipeIterator>()
+        .collect::<BTreeMap<_, _>>();
+
+    let pipes = grid
+        .clone()
         .into_iter()
+        .collect::<PipeIterator>()
+        .collect::<BTreeMap<_, _>>();
+
+    grid.into_iter()
+        .collect::<Vec<_>>()
+        .group_by(|a, b| a.0.x == b.0.x)
+        .into_iter()
+        .flat_map(|data| {
+            let mut inside = false;
+
+            data.into_iter()
+                .filter(|(pos, cell)| match cell {
+                    None => inside,
+                    Some(pipe) => match pipes.contains_key(pos) {
+                        false => inside,
+                        true => {
+                            match pipe {
+                                Pipe::Horizontal | Pipe::BottomRight | Pipe::BottomLeft => {}
+                                _ => {
+                                    inside = !inside;
+                                }
+                            }
+
+                            false
+                        }
+                    },
+                })
+                .collect::<Vec<_>>()
+        })
         .count()
-        / 2)
-        + 1
 }
 
 #[cfg(test)]
@@ -139,6 +210,6 @@ mod test {
         let input = include_str!("./ten.txt");
         let output = ten(input);
 
-        assert_eq!(4, output);
+        assert_eq!(265, output);
     }
 }

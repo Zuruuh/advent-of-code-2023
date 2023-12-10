@@ -4,6 +4,12 @@ pub struct Position {
     pub y: usize,
 }
 
+impl std::fmt::Display for Position {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}:{}", self.x, self.y)
+    }
+}
+
 impl Position {
     pub fn surrounding(&self) -> [Self; 8] {
         [

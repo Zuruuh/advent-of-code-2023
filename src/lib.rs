@@ -1,4 +1,5 @@
 #![allow(dead_code)]
+#![feature(slice_group_by)]
 #![feature(iter_map_windows)]
 
 mod five;
