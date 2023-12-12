@@ -51,4 +51,12 @@ impl Position {
     pub fn with_y(self, y: usize) -> Self {
         Self { x: self.x, y }
     }
+
+    pub fn add_x(self, x: isize) -> Self {
+        self.with_x((self.x as isize - x).max(0) as usize)
+    }
+
+    pub fn add_y(self, y: isize) -> Self {
+        self.with_y((self.y as isize - y).max(0) as usize)
+    }
 }

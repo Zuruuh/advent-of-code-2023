@@ -2,6 +2,7 @@
 #![feature(slice_group_by)]
 #![feature(iter_map_windows)]
 
+mod eleven;
 mod five;
 mod four;
 mod nine;
