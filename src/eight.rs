@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::collections::BTreeMap;
 
 enum Instruction {
     Left,
@@ -10,7 +10,7 @@ impl From<char> for Instruction {
         match value {
             'L' => Self::Left,
             'R' => Self::Right,
-            _ => panic!("wtf"),
+            _ => unreachable!(),
         }
     }
 }
@@ -26,67 +26,73 @@ pub fn eight(input: &str) -> usize {
 
     input.next().unwrap();
 
+    let mut positions = Vec::<String>::new();
+
     let paths = input
         .map(|line| {
-            let line = line.chars();
+            let mut line = line.chars().collect::<Vec<_>>();
 
-            // TODO refactor this bcz it's trash
             (
-                line.clone().take(3).collect::<String>(),
+                line.iter().take(3).collect::<String>(),
                 (
                     {
-                        let line = line.clone().skip(4 + 3);
-                        line.clone().take(3).collect::<String>()
+                        line = line.into_iter().skip(3 + 4).collect();
+                        line.iter().take(3).collect::<String>()
                     },
                     {
-                        let line = line.skip(4 + 3 + 2 + 3);
-                        line.take(3).collect::<String>()
+                        line = line.into_iter().skip(2 + 3).collect();
+                        line.iter().take(3).collect::<String>()
                     },
                 ),
             )
         })
-        .collect::<HashMap<_, _>>();
-
-    let mut count = 0;
-    let mut positions = paths
-        .iter()
-        .filter_map(|(position, _)| {
-            if position.ends_with('A') {
-                return Some(position.clone());
+        .map(|line| {
+            if line.0.ends_with('A') {
+                positions.push(line.0.clone());
             }
 
-            None
+            line
         })
-        .collect::<Vec<_>>();
+        .collect::<BTreeMap<_, _>>();
 
-    for instruction in instructions.into_iter() {
-        count += 1;
-        positions = positions
-            .into_iter()
-            .map(|position| {
-                let goto = paths.get(&position);
-
-                if goto.is_none() {
-                    return position;
-                }
-
-                let goto = match instruction {
-                    Instruction::Left => goto.unwrap().0.clone(),
-                    Instruction::Right => goto.unwrap().1.clone(),
+    let total_steps_count = positions
+        .into_iter()
+        .map(|pos| {
+            let mut next_position: String = pos.clone();
+            let mut count = 0;
+            for instruction in instructions.clone() {
+                count += 1;
+                let goto = paths.get(&next_position).unwrap();
+                next_position = match instruction {
+                    Instruction::Left => goto.0.clone(),
+                    Instruction::Right => goto.1.clone(),
                 };
 
-                println!("Navigating from {position} to {goto}");
+                if next_position.ends_with('Z') {
+                    break;
+                }
+            }
 
-                goto
-            })
-            .collect();
+            count
+        })
+        .fold(1, lcm);
 
-        if positions.iter().all(|position| position.ends_with('Z')) {
-            break;
-        }
+    total_steps_count
+}
+
+/// I stole this function online
+fn lcm(a: usize, b: usize) -> usize {
+    (a * b) / gcd(a, b)
+}
+
+fn gcd(mut a: usize, mut b: usize) -> usize {
+    while b > 0 {
+        let tmp_a = a;
+        a = b;
+        b = tmp_a % b;
     }
 
-    count
+    return a;
 }
 
 #[cfg(test)]
@@ -98,6 +104,6 @@ mod test {
         let input = include_str!("./eight.txt");
         let output = eight(input);
 
-        assert_eq!(6, output);
+        assert_eq!(17972669116327, output);
     }
 }
