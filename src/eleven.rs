@@ -6,6 +6,7 @@ use crate::Position;
 enum Cell {
     Galaxy,
     Space,
+    IntergalacticVoid,
 }
 
 impl From<char> for Cell {
@@ -18,6 +19,15 @@ impl From<char> for Cell {
     }
 }
 
+impl Into<isize> for &Cell {
+    fn into(self) -> isize {
+        match self {
+            Cell::Galaxy | Cell::Space => 1,
+            Cell::IntergalacticVoid => 1_000_000,
+        }
+    }
+}
+
 impl std::fmt::Display for Cell {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(
@@ -25,7 +35,8 @@ impl std::fmt::Display for Cell {
             "{}",
             match self {
                 Self::Galaxy => '#',
-                _ => '.',
+                Self::Space => '.',
+                Self::IntergalacticVoid => '+',
             }
         )
     }
@@ -52,12 +63,13 @@ pub fn eleven(input: &str) -> isize {
             .iter()
             .map(|vec| *vec.get(i).unwrap())
             .collect::<Vec<_>>();
-        let is_only_spaces = line.iter().all(|cell| matches!(cell, Cell::Space));
+        let is_only_spaces = line
+            .iter()
+            .all(|cell| matches!(cell, Cell::Space | Cell::IntergalacticVoid));
 
         if is_only_spaces {
             grid.iter_mut().for_each(|vec| {
-                vec.push(Cell::Space);
-                vec.push(Cell::Space);
+                vec.push(Cell::IntergalacticVoid);
             })
         } else {
             for (j, cell) in line.into_iter().enumerate() {
@@ -69,11 +81,16 @@ pub fn eleven(input: &str) -> isize {
     // horizontal
     let grid = grid
         .into_iter()
-        .flat_map(|line| {
+        .map(|line| {
             line.iter()
-                .all(|cell| matches!(cell, Cell::Space))
-                .then(|| vec![line.clone(), line.clone()])
-                .unwrap_or_else(|| vec![line])
+                .all(|cell| matches!(cell, Cell::Space | Cell::IntergalacticVoid))
+                .then(|| {
+                    line.clone()
+                        .into_iter()
+                        .map(|_| Cell::IntergalacticVoid)
+                        .collect()
+                })
+                .unwrap_or_else(|| line)
         })
         .enumerate()
         .flat_map(|(x, line)| {
@@ -107,14 +124,26 @@ pub fn eleven(input: &str) -> isize {
         print!("{expanded_grid}");
     }
 
+    dbg!((0..3).collect::<Vec<_>>(), (3..0).collect::<Vec<_>>());
+
     for (i, (pos, _)) in galaxies.iter().enumerate() {
         for (next_pos, _) in galaxies.iter().skip(i + 1) {
-            let distance = (next_pos.x.max(pos.x) as isize - pos.x.min(next_pos.x) as isize)
-                + (next_pos.y.max(pos.y) as isize - pos.y.min(next_pos.y) as isize);
+            let distance_x: isize = (pos.x.min(next_pos.x)..next_pos.x.max(pos.x))
+                .into_iter()
+                .map(|x| -> isize { grid.get(&Position { x, y: pos.y }).unwrap().into() })
+                .sum();
 
-            count += distance;
+            let distance_y: isize = (pos.y.min(next_pos.y)..next_pos.y.max(pos.y))
+                .into_iter()
+                .map(|y| -> isize { grid.get(&Position { y, x: pos.x }).unwrap().into() })
+                .sum();
 
-            println!("Calculated a distance of {distance} between {pos} and {next_pos}");
+            count += distance_x + distance_y;
+
+            println!(
+                "Calculated a distance for {pos} -> {next_pos} of {} ({distance_x}X and {distance_y}Y)",
+                distance_x + distance_y
+            );
         }
     }
 
